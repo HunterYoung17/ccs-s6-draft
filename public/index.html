@@ -1,0 +1,903 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Live Draft</title>
+    <script src="/socket.io/socket.io.js"></script>
+    <style>
+      /* Dynamic Theme Variables */
+      :root {
+        --primary: #2c3e50;
+        --primary-text: #ffffff;
+        --secondary: #3498db;
+        --secondary-text: #ffffff;
+        --success: #27ae60;
+        --warning: #f1c40f;
+        --danger: #e74c3c;
+        --light: #ecf0f1;
+        --dark: #2c3e50;
+      }
+
+      body {
+        font-family: 'Segoe UI', sans-serif;
+        margin: 0;
+        background-color: #f5f6fa;
+        color: #333;
+        height: 100vh;
+        overflow-x: hidden;
+      }
+
+      /* Themed Header */
+      header {
+        background-color: var(--primary);
+        color: var(--primary-text);
+        padding: 1rem 2rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        transition: all 0.3s ease;
+      }
+
+      .container {
+        max-width: 1400px;
+        margin: 1rem auto;
+        padding: 0 1rem;
+      }
+      .card {
+        background: white;
+        border-radius: 8px;
+        padding: 1rem;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        margin-bottom: 1rem;
+      }
+      .hidden {
+        display: none !important;
+      }
+
+      /* Grid and Scrollables */
+      .dashboard-grid {
+        display: grid;
+        grid-template-columns: 1fr 2fr;
+        gap: 1rem;
+      }
+      .table-scroll {
+        max-height: 350px;
+        overflow-y: auto;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+      }
+
+      /* Tables */
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      th,
+      td {
+        text-align: left;
+        padding: 8px 12px;
+        border-bottom: 1px solid #ddd;
+        font-size: 0.95rem;
+      }
+      th {
+        background-color: var(--light);
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+      }
+
+      /* Buttons & Inputs */
+      button {
+        padding: 6px 12px;
+        border-radius: 4px;
+        font-weight: bold;
+        border: none;
+        cursor: pointer;
+        margin-top: 5px;
+        font-size: 0.9rem;
+      }
+      input,
+      select {
+        padding: 8px;
+        margin: 5px 0;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        width: 100%;
+        box-sizing: border-box;
+      }
+      .btn-success {
+        background-color: var(--success);
+        color: white;
+      }
+      .btn-danger {
+        background-color: var(--danger);
+        color: white;
+      }
+      .btn-warning {
+        background-color: var(--warning);
+        color: #333;
+      }
+      .btn-disabled {
+        background-color: #95a5a6;
+        color: white;
+        cursor: not-allowed;
+      }
+
+      /* Themed Status Bar */
+      .status-bar {
+        background: var(--secondary);
+        color: var(--secondary-text);
+        padding: 0.75rem 1.5rem;
+        border-radius: 8px;
+        margin-bottom: 1rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 1.2rem;
+        transition: all 0.3s ease;
+      }
+      .timer {
+        font-size: 1.8rem;
+        font-weight: bold;
+        color: var(--warning);
+        background: rgba(0, 0, 0, 0.4);
+        padding: 0.25rem 0.75rem;
+        border-radius: 8px;
+        text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+      }
+      .timer.danger {
+        color: var(--danger);
+      }
+
+      /* Login */
+      .login-box {
+        max-width: 400px;
+        margin: 10vh auto;
+        background: white;
+        padding: 2rem;
+        border-radius: 8px;
+        text-align: center;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+      }
+
+      /* Draft Board Styling */
+      .board-container {
+        display: flex;
+        gap: 15px;
+        overflow-x: auto;
+        padding-bottom: 10px;
+      }
+      .round-column {
+        min-width: 250px;
+        background: #f8f9fa;
+        padding: 10px;
+        border-radius: 6px;
+        border: 1px solid #e1e8ed;
+      }
+      .round-column h3 {
+        margin-top: 0;
+        border-bottom: 2px solid var(--primary);
+        padding-bottom: 5px;
+        text-align: center;
+        color: var(--primary);
+        font-size: 1.1rem;
+        transition: all 0.3s ease;
+      }
+      .pick-list {
+        padding-left: 20px;
+        margin: 0;
+        font-size: 0.9rem;
+      }
+      .pick-list li {
+        padding: 4px 0;
+        border-bottom: 1px dashed #ccc;
+      }
+      .pick-list li:last-child {
+        border-bottom: none;
+      }
+
+      /* Admin Approval & Roster Cards */
+      .admin-stats {
+        background: white;
+        padding: 10px;
+        border-radius: 4px;
+        margin: 10px 0;
+        border: 1px solid #ccc;
+        font-size: 0.95rem;
+      }
+      .admin-stats ul {
+        margin: 5px 0 10px 0;
+        padding-left: 20px;
+      }
+      .checklist-ul {
+        list-style-type: '✅ ';
+        padding-left: 25px !important;
+        color: var(--success);
+        font-weight: 500;
+      }
+      .checklist-ul span {
+        color: #333;
+        font-weight: normal;
+      }
+
+      .roster-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 1rem;
+        margin-top: 10px;
+      }
+      .roster-card {
+        border: 1px solid #ddd;
+        padding: 10px;
+        border-radius: 6px;
+        background: #fff;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        border-top: 4px solid var(--primary);
+      }
+      .roster-card h3 {
+        margin-top: 0;
+        margin-bottom: 5px;
+        color: var(--primary);
+        border-bottom: 2px solid var(--light);
+        padding-bottom: 4px;
+        font-size: 1.1rem;
+      }
+      .roster-card p {
+        margin: 2px 0;
+        font-size: 0.85rem;
+      }
+      .roster-card table {
+        margin-top: 10px;
+        font-size: 0.85rem;
+      }
+      .roster-card th,
+      .roster-card td {
+        padding: 4px 8px;
+      }
+    </style>
+  </head>
+  <body>
+    <header id="main-header" class="hidden">
+      <h1 style="margin: 0; font-size: 1.5rem">Live Draft Room</h1>
+      <div>
+        <span
+          id="logged-in-user"
+          style="margin-right: 15px; font-weight: bold"
+        ></span
+        ><button class="btn-danger" onclick="logout()">Logout</button>
+      </div>
+    </header>
+
+    <!-- LOGIN -->
+    <div id="login-view" class="login-box">
+      <h2>System Login</h2>
+      <p>Username: <em>admin</em> OR <em>[Org Name]</em></p>
+      <input type="text" id="login-username" placeholder="Username" />
+      <button class="btn-success" onclick="handleLogin()" style="width: 100%">
+        Login
+      </button>
+    </div>
+
+    <div class="container">
+      <!-- STATUS BAR -->
+      <div id="draft-status-container" class="hidden">
+        <div class="status-bar" id="draft-status-bar">
+          <span>Waiting for Admin...</span>
+          <div class="timer">00:00</div>
+        </div>
+      </div>
+
+      <!-- SHARED DRAFT BOARD -->
+      <div id="shared-draft-board" class="card hidden">
+        <!-- Populated by JS -->
+      </div>
+
+      <!-- ADMIN VIEW -->
+      <div id="admin-view" class="hidden">
+        <div
+          id="admin-approval-section"
+          class="card hidden"
+          style="border: 2px solid var(--success); background-color: #e8f6f3"
+        >
+          <h2 style="margin-top: 0; color: var(--success)">
+            Admin Draft Control (Action Required)
+          </h2>
+          <div id="admin-approval-content"></div>
+        </div>
+
+        <div class="dashboard-grid">
+          <div class="card">
+            <h2 style="margin-top: 0">Draft Controls</h2>
+            <select id="draft-league-select" onchange="renderAdminUI()">
+              <option value="CCS">CCS</option>
+              <option value="CPL">CPL</option>
+              <option value="CAS">CAS</option>
+              <option value="CNL">CNL</option>
+            </select>
+            <button
+              class="btn-warning"
+              style="width: 100%"
+              onclick="startDraft()"
+            >
+              Start / Reset Draft
+            </button>
+            <!-- NEW: UNDO BUTTON -->
+            <button
+              class="btn-danger"
+              style="width: 100%; margin-top: 10px"
+              onclick="undoLastPick()"
+            >
+              ↩ Undo Last Pick
+            </button>
+          </div>
+          <div class="card">
+            <h2 style="margin-top: 0">Player Database</h2>
+            <div class="table-scroll">
+              <table id="admin-players-table">
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>MMR</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- ADMIN LEAGUE ROSTERS BOX -->
+        <div class="card">
+          <h2 style="margin-top: 0">League Rosters Review</h2>
+          <div id="admin-rosters-container" class="roster-grid">
+            <!-- Populated by JS -->
+          </div>
+        </div>
+      </div>
+
+      <!-- OWNER VIEW -->
+      <div id="owner-view" class="hidden">
+        <div class="card">
+          <label><strong>Select Your Team to Manage: </strong></label>
+          <select id="team-select" onchange="renderUI()">
+            <option value="">-- Choose Team --</option>
+          </select>
+        </div>
+
+        <div class="dashboard-grid">
+          <!-- Team Info -->
+          <div class="card">
+            <h2 style="margin-top: 0">Team Info</h2>
+            <p style="margin-bottom: 5px">
+              <strong>MMR Cap:</strong> <span id="my-mmr-total">0</span>
+            </p>
+            <p style="margin-top: 0; margin-bottom: 5px">
+              <strong>MMR Remaining:</strong> <span id="my-mmr-rem">0</span>
+            </p>
+            <p style="margin-top: 0; font-size: 0.9em; color: var(--danger)">
+              <strong>Reserved for Future Picks:</strong>
+              <span id="my-mmr-reserved">0</span>
+            </p>
+
+            <div
+              class="table-scroll"
+              style="max-height: 230px; margin-top: 15px"
+            >
+              <table id="my-roster-table">
+                <thead>
+                  <tr>
+                    <th>Player</th>
+                    <th>MMR</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Available Players -->
+          <div class="card">
+            <h2 style="margin-top: 0">Available Players</h2>
+            <div class="table-scroll">
+              <table id="available-players-table">
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>MMR</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const socket = io();
+      let serverState = {};
+      let currentUser = null;
+
+      // --- NEW: THEME ENGINE ---
+      const themes = {
+        admin: { p: '#d4af37', pt: '#000000', s: '#7f8c8d', st: '#ffffff' },
+        Shockwave: { p: '#0984e3', pt: '#ffffff', s: '#ffffff', st: '#000000' },
+        Blasters: { p: '#e67e22', pt: '#ffffff', s: '#7f8c8d', st: '#ffffff' },
+        Pirates: { p: '#8b4513', pt: '#ffffff', s: '#ffffff', st: '#000000' },
+        Stars: { p: '#8e44ad', pt: '#ffffff', s: '#ffffff', st: '#000000' },
+        Howlers: { p: '#e84393', pt: '#ffffff', s: '#7f8c8d', st: '#ffffff' },
+        Moose: { p: '#d2b48c', pt: '#000000', s: '#228b22', st: '#ffffff' },
+        'Atlantis Anglers': {
+          p: '#008080',
+          pt: '#ffffff',
+          s: '#7f8c8d',
+          st: '#ffffff',
+        },
+        Ninjas: { p: '#1e272e', pt: '#ffffff', s: '#f1c40f', st: '#000000' },
+        Samurai: { p: '#c0392b', pt: '#ffffff', s: '#1e272e', st: '#ffffff' },
+        Flyers: { p: '#27ae60', pt: '#ffffff', s: '#1e272e', st: '#ffffff' },
+        Vipers: { p: '#f1c40f', pt: '#000000', s: '#2c3e50', st: '#ffffff' },
+        Zebras: { p: '#ffffff', pt: '#000000', s: '#1e272e', st: '#ffffff' },
+      };
+
+      function applyTheme(user) {
+        let themeKey = user;
+        if (user.toLowerCase() === 'anglers') themeKey = 'Atlantis Anglers';
+
+        const t = themes[themeKey] || {
+          p: '#2c3e50',
+          pt: '#ffffff',
+          s: '#3498db',
+          st: '#ffffff',
+        };
+
+        document.documentElement.style.setProperty('--primary', t.p);
+        document.documentElement.style.setProperty('--primary-text', t.pt);
+        document.documentElement.style.setProperty('--secondary', t.s);
+        document.documentElement.style.setProperty('--secondary-text', t.st);
+
+        // Fix borders for white themes so they don't blend into the background
+        const header = document.getElementById('main-header');
+        if (t.p === '#ffffff') header.style.borderBottom = '2px solid #ccc';
+        else header.style.borderBottom = 'none';
+
+        const statusBar = document.getElementById('draft-status-bar');
+        if (t.s === '#ffffff') statusBar.style.border = '2px solid #ccc';
+        else statusBar.style.border = 'none';
+      }
+
+      socket.on('stateUpdate', (state) => {
+        serverState = state;
+        if (currentUser === 'admin') renderAdminUI();
+        if (currentUser && currentUser !== 'admin') renderUI();
+        renderDraftBoard();
+      });
+
+      function getCapDetails(team, league) {
+        const rules = serverState.leagueConfig[league];
+        const CAPPED_ROUNDS = 3;
+
+        const cappedRoster = team.roster.filter(
+          (p) => p.round <= CAPPED_ROUNDS
+        );
+        const spent = cappedRoster.reduce(
+          (sum, p) => sum + serverState.players.find((x) => x.id === p.id).mmr,
+          0
+        );
+        const rem = team.mmrCap - spent;
+
+        let currentActiveRound = 1;
+        if (
+          serverState.activeDraft &&
+          serverState.activeDraft.isActive &&
+          serverState.activeDraft.league === team.league
+        ) {
+          currentActiveRound = serverState.activeDraft.currentRound;
+        } else {
+          currentActiveRound =
+            team.roster.filter((p) => p.round <= CAPPED_ROUNDS).length + 1;
+        }
+
+        const isUncappedRound = currentActiveRound > CAPPED_ROUNDS;
+        const filledCappedPicks = team.roster.filter(
+          (p) => p.round <= CAPPED_ROUNDS
+        ).length;
+        const futurePicksNeeded = Math.max(
+          0,
+          CAPPED_ROUNDS - filledCappedPicks - (isUncappedRound ? 0 : 1)
+        );
+        const minRequiredFutureCap = futurePicksNeeded * rules.minMmr;
+
+        return { spent, rem, isUncappedRound, minRequiredFutureCap, rules };
+      }
+
+      function handleLogin() {
+        const user = document.getElementById('login-username').value.trim();
+        if (user.toLowerCase() === 'admin') {
+          currentUser = 'admin';
+          applyTheme('admin');
+          document.getElementById('logged-in-user').innerText = 'ADMIN';
+          document.getElementById('login-view').classList.add('hidden');
+          document.getElementById('main-header').classList.remove('hidden');
+          document
+            .getElementById('draft-status-container')
+            .classList.remove('hidden');
+          document.getElementById('admin-view').classList.remove('hidden');
+          renderAdminUI();
+          renderDraftBoard();
+        } else {
+          const orgMatch = serverState.orgData.find(
+            (o) => o.org.toLowerCase() === user.toLowerCase()
+          );
+          if (orgMatch) {
+            currentUser = orgMatch.org;
+            applyTheme(currentUser);
+            document.getElementById(
+              'logged-in-user'
+            ).innerText = `${currentUser} Org`;
+            document.getElementById('login-view').classList.add('hidden');
+            document.getElementById('main-header').classList.remove('hidden');
+            document
+              .getElementById('draft-status-container')
+              .classList.remove('hidden');
+            document.getElementById('owner-view').classList.remove('hidden');
+
+            const select = document.getElementById('team-select');
+            select.innerHTML = '<option value="">-- Choose Team --</option>';
+            serverState.teams
+              .filter((t) => t.org === currentUser)
+              .forEach((t) => {
+                select.innerHTML += `<option value="${t.id}">${t.name} (${t.league})</option>`;
+              });
+            renderUI();
+            renderDraftBoard();
+          } else {
+            alert('Invalid login');
+          }
+        }
+      }
+
+      function logout() {
+        location.reload();
+      }
+
+      function startDraft() {
+        socket.emit(
+          'startDraft',
+          document.getElementById('draft-league-select').value
+        );
+      }
+
+      function adminFinalizePick() {
+        const playerId = parseInt(
+          document.getElementById('admin-override-select').value
+        );
+        socket.emit('adminFinalizePick', playerId);
+      }
+
+      function submitPendingPick(playerId, teamId) {
+        socket.emit('submitPick', { playerId, teamId });
+      }
+
+      // --- NEW: UNDO LOGIC ---
+      function undoLastPick() {
+        if (
+          confirm('Are you sure you want to undo the very last manual pick?')
+        ) {
+          socket.emit('undoLastPick');
+        }
+      }
+
+      function autoDraftPick() {
+        const draft = serverState.activeDraft;
+        if (!draft || !draft.isActive) return;
+
+        const currentTeam = draft.teamsInLeague[draft.currentPickIndex];
+        const capDetails = getCapDetails(currentTeam, draft.league);
+        const rules = capDetails.rules;
+
+        let eligible = serverState.players.filter((p) => {
+          if (p.draftedBy !== null) return false;
+          if (p.mmr < rules.minMmr || p.mmr > rules.maxMmr) return false;
+          if (capDetails.isUncappedRound) return true;
+          return capDetails.rem - p.mmr >= capDetails.minRequiredFutureCap;
+        });
+
+        if (eligible.length > 0) {
+          socket.emit('adminFinalizePick', eligible[0].id);
+        } else {
+          alert('No eligible players found for this team!');
+        }
+      }
+
+      // --- ADMIN VIEW RENDER ---
+      function renderAdminUI() {
+        if (!serverState.players) return;
+
+        const tbody = document.querySelector('#admin-players-table tbody');
+        tbody.innerHTML = '';
+        serverState.players.forEach((p) => {
+          const team = p.draftedBy
+            ? serverState.teams.find((t) => t.id === p.draftedBy).name
+            : 'Available';
+          tbody.innerHTML += `<tr><td>${p.name}</td><td>${p.mmr}</td><td>${team}</td></tr>`;
+        });
+
+        updateStatusBar();
+
+        const selectedLeague = document.getElementById(
+          'draft-league-select'
+        ).value;
+        const rostersContainer = document.getElementById(
+          'admin-rosters-container'
+        );
+        rostersContainer.innerHTML = '';
+
+        const leagueTeams = serverState.teams.filter(
+          (t) => t.league === selectedLeague
+        );
+        leagueTeams.forEach((team) => {
+          const capDetails = getCapDetails(team, selectedLeague);
+
+          let html = `
+                <div class="roster-card">
+                    <h3>${team.name} (${team.org})</h3>
+                    <p><strong>Capped MMR Spent:</strong> ${capDetails.spent} / ${team.mmrCap}</p>
+                    <p><strong>Capped MMR Left:</strong> <span style="color:var(--success); font-weight:bold">${capDetails.rem}</span></p>
+                    <table>
+                        <thead>
+                            <tr style="background: #f1f2f6;">
+                                <th>Rnd</th>
+                                <th>Player</th>
+                                <th>MMR</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+
+          const sortedRoster = [...team.roster].sort(
+            (a, b) => a.round - b.round
+          );
+          sortedRoster.forEach((r) => {
+            const p = serverState.players.find((x) => x.id === r.id);
+            html += `<tr>
+                        <td style="border-bottom: 1px solid #eee;">${r.round}</td>
+                        <td style="border-bottom: 1px solid #eee;">${p.name}</td>
+                        <td style="border-bottom: 1px solid #eee;">${p.mmr}</td>
+                    </tr>`;
+          });
+
+          if (sortedRoster.length === 0) {
+            html += `<tr><td colspan="3" style="text-align: center; color: #999;">No players on roster</td></tr>`;
+          }
+
+          html += `</tbody></table></div>`;
+          rostersContainer.innerHTML += html;
+        });
+
+        const panel = document.getElementById('admin-approval-section');
+        const content = document.getElementById('admin-approval-content');
+        const draft = serverState.activeDraft;
+
+        if (!draft || !draft.isActive) {
+          panel.classList.add('hidden');
+          return;
+        }
+        panel.classList.remove('hidden');
+
+        const currentTeam = draft.teamsInLeague[draft.currentPickIndex];
+        const capDetails = getCapDetails(currentTeam, draft.league);
+        const rules = capDetails.rules;
+
+        let eligible = serverState.players.filter((p) => {
+          if (p.draftedBy !== null) return false;
+          if (p.mmr < rules.minMmr || p.mmr > rules.maxMmr) return false;
+          if (capDetails.isUncappedRound) return true;
+          return capDetails.rem - p.mmr >= capDetails.minRequiredFutureCap;
+        });
+        let opts = eligible
+          .map(
+            (p) => `<option value="${p.id}">${p.name} (MMR: ${p.mmr})</option>`
+          )
+          .join('');
+
+        if (draft.pendingPick) {
+          const p = serverState.players.find(
+            (x) => x.id === draft.pendingPick.playerId
+          );
+
+          const remainingAfter = capDetails.isUncappedRound
+            ? capDetails.rem
+            : capDetails.rem - p.mmr;
+          const picksRemaining =
+            draft.maxRounds - currentTeam.roster.length - 1;
+
+          let checklistHtml = `<li><span><strong>Cap Limits:</strong> Pick does not exceed max MMR constraints.</span></li>`;
+          if (!capDetails.isUncappedRound && rules.minMmr > 0) {
+            checklistHtml += `<li><span><strong>Future Lock:</strong> Mathematically reserves min ${capDetails.minRequiredFutureCap} MMR for remaining capped picks.</span></li>`;
+          }
+          if (capDetails.isUncappedRound) {
+            checklistHtml += `<li><span><strong>CNL Exemption:</strong> Round 4+ picks do not count against the MMR cap.</span></li>`;
+          }
+
+          content.innerHTML = `
+                <p style="margin:0 0 10px 0;"><strong>${
+                  currentTeam.name
+                }</strong> has selected <strong>${p.name}</strong> (Took ${
+            60 - draft.pendingPick.timeRemainingAtPick
+          }s)</p>
+                
+                <div class="admin-stats">
+                    <strong>Pick Impact Summary:</strong>
+                    <ul>
+                        <li>Cap Remaining <strong>Before</strong> Pick: ${
+                          capDetails.rem
+                        }</li>
+                        <li>Cap Remaining <strong>After</strong> Pick: ${remainingAfter}</li>
+                        <li>Picks Remaining in League (After this): ${picksRemaining}</li>
+                    </ul>
+                    
+                    <strong>Safeguards Cleared:</strong>
+                    <ul class="checklist-ul">
+                        ${checklistHtml}
+                    </ul>
+                </div>
+
+                <label><strong>Finalize or Change Pick:</strong></label>
+                <select id="admin-override-select"><option value="${
+                  p.id
+                }">-- Keep: ${p.name} --</option>${opts}</select>
+                <button class="btn-success" onclick="adminFinalizePick()">Approve & Advance</button>`;
+        } else if (draft.timeLeft <= 0) {
+          content.innerHTML = `<p style="color:var(--danger)">TIME UP FOR ${currentTeam.name}!</p>
+                <select id="admin-override-select"><option value="">-- Force Pick --</option>${opts}</select>
+                <button class="btn-success" onclick="adminFinalizePick()">Force Pick & Advance</button>`;
+        } else {
+          content.innerHTML = `
+                <p>Waiting on <strong>${currentTeam.name}</strong> to make a selection... Time remaining: ${draft.timeLeft}s</p>
+                <button class="btn-warning" onclick="autoDraftPick()" style="margin-top: 10px;">⚡ Auto-Draft (Skip Timer)</button>
+                `;
+        }
+      }
+
+      // --- OWNER VIEW RENDER ---
+      function renderUI() {
+        updateStatusBar();
+
+        const draft = serverState.activeDraft;
+        const teamId = parseInt(document.getElementById('team-select').value);
+        if (!teamId) return;
+
+        const team = serverState.teams.find((t) => t.id === teamId);
+        const capDetails = getCapDetails(team, draft.league || team.league);
+        const rules = capDetails.rules;
+
+        document.getElementById('my-mmr-total').innerText = team.mmrCap;
+        document.getElementById('my-mmr-rem').innerText = capDetails.rem;
+        document.getElementById('my-mmr-reserved').innerText =
+          capDetails.minRequiredFutureCap > 0
+            ? capDetails.minRequiredFutureCap
+            : '0 (Clear)';
+
+        const rTbody = document.querySelector('#my-roster-table tbody');
+        rTbody.innerHTML = '';
+
+        const sortedRoster = [...team.roster].sort((a, b) => a.round - b.round);
+        sortedRoster.forEach((rosterObj) => {
+          const p = serverState.players.find((x) => x.id === rosterObj.id);
+          rTbody.innerHTML += `<tr><td>${p.name} (R${rosterObj.round})</td><td>${p.mmr}</td></tr>`;
+        });
+
+        const pTbody = document.querySelector('#available-players-table tbody');
+        pTbody.innerHTML = '';
+        serverState.players
+          .filter((p) => p.draftedBy === null)
+          .forEach((p) => {
+            let action = '<em>Waiting for turn</em>';
+
+            if (draft && draft.isActive) {
+              const clockTeam = draft.teamsInLeague[draft.currentPickIndex];
+              if (draft.pendingPick) action = `<em>Pending Review</em>`;
+              else if (draft.timeLeft <= 0) action = `<em>Time Expired</em>`;
+              else if (clockTeam.id === teamId) {
+                const meetsRange =
+                  p.mmr >= rules.minMmr && p.mmr <= rules.maxMmr;
+                let canAfford = true;
+                if (!capDetails.isUncappedRound) {
+                  canAfford =
+                    capDetails.rem - p.mmr >= capDetails.minRequiredFutureCap;
+                }
+
+                if (!meetsRange)
+                  action = `<button class="btn-disabled" disabled>Ineligible Range</button>`;
+                else if (!canAfford)
+                  action = `<button class="btn-danger" disabled>Cap Exceeded</button>`;
+                else
+                  action = `<button class="btn-success" onclick="submitPendingPick(${p.id}, ${teamId})">Draft</button>`;
+              } else if (team.league !== draft.league)
+                action = `<em>Wrong League</em>`;
+            }
+            pTbody.innerHTML += `<tr><td>${p.name}</td><td>${p.mmr}</td><td>${action}</td></tr>`;
+          });
+      }
+
+      // --- SHARED UI FUNCTIONS ---
+      function updateStatusBar() {
+        const draft = serverState.activeDraft;
+        const bar = document.getElementById('draft-status-bar');
+
+        if (!draft || !draft.isActive) {
+          bar.innerHTML = `<span>Waiting for Admin...</span><div class="timer">00:00</div>`;
+        } else {
+          const currentTeam = draft.teamsInLeague[draft.currentPickIndex];
+          let text = `Draft: <strong>${draft.league}</strong> | Round ${draft.currentRound} | ON CLOCK: <strong>${currentTeam.name}</strong>`;
+
+          if (draft.pendingPick)
+            text = `Admin reviewing ${currentTeam.name}'s pick...`;
+          else if (draft.timeLeft <= 0)
+            text = `TIME EXPIRED! Admin forcing pick for ${currentTeam.name}...`;
+
+          let cls = draft.timeLeft <= 10 ? 'timer danger' : 'timer';
+          let time = `00:${
+            draft.timeLeft < 10 ? '0' + draft.timeLeft : draft.timeLeft
+          }`;
+          bar.innerHTML = `<span>${text}</span><div class="${cls}">${time}</div>`;
+        }
+      }
+
+      function renderDraftBoard() {
+        const boardDiv = document.getElementById('shared-draft-board');
+        const draft = serverState.activeDraft;
+
+        if (
+          !draft ||
+          (!draft.isActive &&
+            (!draft.draftBoard || draft.draftBoard.length === 0))
+        ) {
+          boardDiv.classList.add('hidden');
+          return;
+        }
+
+        boardDiv.classList.remove('hidden');
+        let html =
+          '<h2 style="margin-top:0;">Draft Recap</h2><div class="board-container">';
+
+        for (let r = 1; r <= draft.maxRounds; r++) {
+          html += `<div class="round-column">`;
+          html += `<h3>Round ${r}</h3>`;
+
+          const picksInRound = draft.draftBoard.filter((p) => p.round === r);
+          html += `<ol class="pick-list">`;
+
+          picksInRound.forEach((pick) => {
+            let playerText = '';
+            if (pick.playerId) {
+              const player = serverState.players.find(
+                (p) => p.id === pick.playerId
+              );
+              playerText = `<strong style="color:var(--success)">${player.name} (${player.mmr})</strong>`;
+            } else if (
+              draft.isActive &&
+              r === draft.currentRound &&
+              pick.teamId === draft.teamsInLeague[draft.currentPickIndex].id
+            ) {
+              playerText = `<span style="color:var(--danger); font-weight:bold;"><em>On Clock</em></span>`;
+            }
+
+            html += `<li><strong>${pick.teamName}</strong> - ${playerText}</li>`;
+          });
+
+          html += `</ol></div>`;
+        }
+
+        html += '</div>';
+        boardDiv.innerHTML = html;
+      }
+    </script>
+  </body>
+</html>
