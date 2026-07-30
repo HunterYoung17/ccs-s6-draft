@@ -513,7 +513,8 @@
             if (!teamId) return;
 
             const team = serverState.teams.find(t => t.id === teamId);
-            const capDetails = getCapDetails(team, draft.league || team.league);
+            const activeLeague = (draft && draft.isActive) ? draft.league : team.league;
+            const capDetails = getCapDetails(team, activeLeague);
             const rules = capDetails.rules;
 
             document.getElementById('my-mmr-total').innerText = team.mmrCap;
@@ -531,28 +532,30 @@
 
             const pTbody = document.querySelector('#available-players-table tbody');
             pTbody.innerHTML = '';
-            serverState.players.filter(p => p.draftedBy === null).forEach(p => {
-                let action = "<em>Waiting for turn</em>";
-                
-                if (draft && draft.isActive) {
-                    const clockTeam = draft.teamsInLeague[draft.currentPickIndex];
-                    if (draft.pendingPick) action = `<em>Pending Review</em>`;
-                    else if (draft.timeLeft <= 0) action = `<em>Time Expired</em>`;
-                    else if (clockTeam.id === teamId) {
-                        
-                        const check = checkPlayerAffordability(team, draft.league, p);
-                        
-                        if (p.mmr < rules.minMmr || p.mmr > rules.maxMmr) {
-                            action = `<button class="btn-disabled" disabled>Ineligible Range</button>`;
-                        } else if (!check.eligible) {
-                            action = `<button class="btn-danger" disabled title="${check.reason}">Cap Exceeded</button>`;
-                        } else {
-                            action = `<button class="btn-success" onclick="submitPendingPick(${p.id}, ${teamId})">Draft</button>`;
-                        }
-                    } else if (team.league !== draft.league) action = `<em>Wrong League</em>`;
-                }
-                pTbody.innerHTML += `<tr><td>${p.name}</td><td>${p.mmr}</td><td>${action}</td></tr>`;
-            });
+            
+            // Filter players to ONLY show those within the target league MMR range
+            serverState.players
+                .filter(p => p.draftedBy === null && p.mmr >= rules.minMmr && p.mmr <= rules.maxMmr)
+                .forEach(p => {
+                    let action = "<em>Waiting for turn</em>";
+                    
+                    if (draft && draft.isActive) {
+                        const clockTeam = draft.teamsInLeague[draft.currentPickIndex];
+                        if (draft.pendingPick) action = `<em>Pending Review</em>`;
+                        else if (draft.timeLeft <= 0) action = `<em>Time Expired</em>`;
+                        else if (clockTeam.id === teamId) {
+                            
+                            const check = checkPlayerAffordability(team, draft.league, p);
+                            
+                            if (!check.eligible) {
+                                action = `<button class="btn-danger" disabled title="${check.reason}">Cap Exceeded</button>`;
+                            } else {
+                                action = `<button class="btn-success" onclick="submitPendingPick(${p.id}, ${teamId})">Draft</button>`;
+                            }
+                        } else if (team.league !== draft.league) action = `<em>Wrong League</em>`;
+                    }
+                    pTbody.innerHTML += `<tr><td>${p.name}</td><td>${p.mmr}</td><td>${action}</td></tr>`;
+                });
         }
 
         // --- SHARED UI FUNCTIONS ---
