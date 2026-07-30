@@ -15,18 +15,18 @@ const leagueConfig = {
 };
 
 const orgData = [
-    { org: "Shockwave", ccs: "Shockwave", cpl: "Sonic Boom", cas: "Surge", cnl: "Sound" },
-    { org: "Blasters", ccs: "Blasters", cpl: "Mortars", cas: "Cannons", cnl: "Ballistics" },
-    { org: "Stars", ccs: "Stars", cpl: "Supernova", cas: "Astronauts", cnl: "Rovers" },
-    { org: "Pirates", ccs: "Pirates", cpl: "Marauders", cas: "Conquerors", cnl: "Shipwreck" },
-    { org: "Howlers", ccs: "Howlers", cpl: "Coyotes", cas: "Wolfpack", cnl: "Timberwolves" },
-    { org: "Moose", ccs: "Moose", cpl: "Groundhogs", cas: "Black Bears", cnl: "Ducks" },
-    { org: "Ninjas", ccs: "Ninjas", cpl: "Shadows", cas: "Prowlers", cnl: "Thieves" },
-    { org: "Samurai", ccs: "Samurai", cpl: "Warriors", cas: "Shaman", cnl: "Bushido" },
-    { org: "Flyers", ccs: "Flyers", cpl: "Lory", cas: "Skyhawks", cnl: "Redwings" },
-    { org: "Atlantis Anglers", ccs: "Atlantis Anglers", cpl: "Fishermen", cas: "Behemoths", cnl: "Leviathans" },
-    { org: "Vipers", ccs: "Vipers", cpl: "Cobras", cas: "Copperheads", cnl: "Anacondas" },
-    { org: "Zebras", ccs: "Zebras", cpl: "Buffalo", cas: "Elephants", cnl: "Rhinos" }
+    { org: "Shockwave", passcode: "3105", ccs: "Shockwave", cpl: "Sonic Boom", cas: "Surge", cnl: "Sound" },
+    { org: "Blasters", passcode: "7241", ccs: "Blasters", cpl: "Mortars", cas: "Cannons", cnl: "Ballistics" },
+    { org: "Stars", passcode: "1983", ccs: "Stars", cpl: "Supernova", cas: "Astronauts", cnl: "Rovers" },
+    { org: "Pirates", passcode: "5620", ccs: "Pirates", cpl: "Marauders", cas: "Conquerors", cnl: "Shipwreck" },
+    { org: "Howlers", passcode: "4319", ccs: "Howlers", cpl: "Coyotes", cas: "Wolfpack", cnl: "Timberwolves" },
+    { org: "Moose", passcode: "9054", ccs: "Moose", cpl: "Groundhogs", cas: "Black Bears", cnl: "Ducks" },
+    { org: "Ninjas", passcode: "2876", ccs: "Ninjas", cpl: "Shadows", cas: "Prowlers", cnl: "Thieves" },
+    { org: "Samurai", passcode: "6148", ccs: "Samurai", cpl: "Warriors", cas: "Shaman", cnl: "Bushido" },
+    { org: "Flyers", passcode: "8532", ccs: "Flyers", cpl: "Lory", cas: "Skyhawks", cnl: "Redwings" },
+    { org: "Atlantis Anglers", passcode: "1409", ccs: "Atlantis Anglers", cpl: "Fishermen", cas: "Behemoths", cnl: "Leviathans" },
+    { org: "Vipers", passcode: "3762", ccs: "Vipers", cpl: "Cobras", cas: "Copperheads", cnl: "Anacondas" },
+    { org: "Zebras", passcode: "9521", ccs: "Zebras", cpl: "Buffalo", cas: "Elephants", cnl: "Rhinos" }
 ];
 
 let teams = [];
@@ -107,7 +107,6 @@ const keeperData = [
     { org: "Zebras", league: "CNL", round: 5, playerName: "Penguin" }
 ];
 
-// Pre-load Keepers onto rosters
 keeperData.forEach(k => {
     const player = players.find(p => p.name.toLowerCase() === k.playerName.toLowerCase());
     const team = teams.find(t => t.org === k.org && t.league === k.league);
@@ -123,7 +122,7 @@ let activeDraft = {
 };
 
 let draftTimerInterval = null;
-const PICK_TIME_LIMIT = 60;
+const PICK_TIME_LIMIT = 90; // Updated to 1 min 30 sec
 
 function broadcastState() {
     io.emit('stateUpdate', { players, teams, activeDraft, leagueConfig, orgData });
@@ -133,7 +132,6 @@ function startTurn() {
     clearInterval(draftTimerInterval);
     activeDraft.pendingPick = null;
     
-    // Skip Keepers
     let keeperFound = true;
     while (keeperFound) {
         if (activeDraft.currentRound > activeDraft.maxRounds) {
@@ -152,7 +150,7 @@ function startTurn() {
             if (activeDraft.currentPickIndex >= activeDraft.teamsInLeague.length) {
                 activeDraft.currentPickIndex = 0;
                 activeDraft.currentRound++;
-                activeDraft.teamsInLeague.reverse(); // Snake
+                activeDraft.teamsInLeague.reverse(); 
             }
         } else {
             keeperFound = false;
@@ -198,7 +196,7 @@ io.on('connection', (socket) => {
             pendingPick: null, 
             timeLeft: PICK_TIME_LIMIT,
             draftBoard: board,
-            pickHistory: [] // Reset history on new draft
+            pickHistory: [] 
         };
         startTurn();
     });
@@ -214,7 +212,6 @@ io.on('connection', (socket) => {
         const player = players.find(p => p.id === playerId);
         const globalTeam = teams.find(t => t.id === team.id);
         
-        // --- SAVE SNAPSHOT FOR UNDO ---
         activeDraft.pickHistory.push({
             playerId: playerId,
             teamId: team.id,
@@ -248,33 +245,27 @@ io.on('connection', (socket) => {
         startTurn();
     });
 
-    // --- NEW UNDO FUNCTIONALITY ---
     socket.on('undoLastPick', () => {
         if (!activeDraft.pickHistory || activeDraft.pickHistory.length === 0) return;
 
         const lastPick = activeDraft.pickHistory.pop();
 
-        // 1. Remove player ownership
         const player = players.find(p => p.id === lastPick.playerId);
         if (player) player.draftedBy = null;
 
-        // 2. Remove from global team roster
         const globalTeam = teams.find(t => t.id === lastPick.teamId);
         if (globalTeam) {
             globalTeam.roster = globalTeam.roster.filter(p => p.id !== lastPick.playerId);
         }
 
-        // 3. Clear draft board slot
         const boardPick = activeDraft.draftBoard.find(p => p.round === lastPick.round && p.teamId === lastPick.teamId);
         if (boardPick) boardPick.playerId = null;
 
-        // 4. Restore the exact clock state prior to that pick being made
         activeDraft.currentRound = lastPick.round;
         activeDraft.currentPickIndex = lastPick.pickIndex;
         activeDraft.teamsInLeague = lastPick.teamsOrder;
-        activeDraft.isActive = true; // Ensure draft resumes if it had ended
+        activeDraft.isActive = true; 
 
-        // Restart turn will automatically put the clock back on this team
         startTurn();
     });
 });
