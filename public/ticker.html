@@ -405,14 +405,15 @@ socket.on('stateUpdate', (state) => {
 function triggerReveal(team, player, roundNum) {
     isRevealing = true;
     const infoBox = document.getElementById('infoBox');
-    const safeName = team.org.toLowerCase().replace(/\s+/g, '');
+    // Look up logo based on the specific Team Name, not the Org Name
+    const safeName = team.name.toLowerCase().replace(/\s+/g, '');
     
     infoBox.className = "info-box expanded";
     infoBox.style.background = themes[team.org] || "#2c3e50";
     
     infoBox.innerHTML = `
         <div class="expanded-text">
-            <img src="logos/${safeName}.png" class="team-logo">
+            <img src="logos/${safeName}.png" class="team-logo" onerror="this.style.display='none'">
             <span style="${themes[team.org] === '#ffffff' ? 'color:black; text-shadow:none;' : ''}">
                 ${team.name} SELECTS - ${player.name} (${player.mmr})
             </span>
@@ -429,7 +430,9 @@ function updateInfoBox(state) {
     const draft = state.activeDraft;
     const infoBox = document.getElementById('infoBox');
     const currentTeam = draft.teamsInLeague[draft.currentPickIndex];
-    const safeName = currentTeam.org.toLowerCase().replace(/\s+/g, '');
+    // Look up logo based on the specific Team Name, not the Org Name
+    const safeName = currentTeam.name.toLowerCase().replace(/\s+/g, '');
+    
     const color = themes[currentTeam.org] || "#2c3e50";
     const isLight = color === "#ffffff";
 
@@ -446,7 +449,7 @@ function updateInfoBox(state) {
         // PICK IS IN STATE
         infoBox.className = "info-box collapsed";
         infoBox.innerHTML = `
-            <img src="logos/${safeName}.png" class="team-logo" style="margin-bottom:5px;">
+            <img src="logos/${safeName}.png" class="team-logo" style="margin-bottom:5px;" onerror="this.style.display='none'">
             <div style="font-weight:900; font-size:16px; ${isLight ? 'text-shadow:none;' : 'text-shadow:1px 1px 0 #000;'}">PICK IS IN</div>
         `;
     } else {
@@ -455,7 +458,7 @@ function updateInfoBox(state) {
         infoBox.innerHTML = `
             <div class="top-row" style="${isLight ? 'text-shadow:none;' : ''}">ON THE CLOCK</div>
             <div class="middle-row">
-                <img src="logos/${safeName}.png" class="team-logo">
+                <img src="logos/${safeName}.png" class="team-logo" onerror="this.style.display='none'">
                 <span id="pickText" style="${isLight ? 'text-shadow:none;' : ''}">RD ${draft.currentRound} - PICK ${draft.currentPickIndex + 1}</span>
             </div>
             <div class="${timerClass}" id="timer" style="${isLight ? 'text-shadow:none;' : ''}">${timeStr}</div>
@@ -472,7 +475,7 @@ function updateLeagueBox(leagueKey) {
     const textEl = document.getElementById('leagueText');
     
     if (leagueLogos[leagueKey]) {
-        logoEl.src = "logos/" + leagueLogos[leagueKey]; // Assuming you put league logos in same folder
+        logoEl.src = "logos/" + leagueLogos[leagueKey]; 
         logoEl.style.display = "block";
     }
     textEl.innerText = leagueNames[leagueKey] || leagueKey;
@@ -533,15 +536,13 @@ function updateMarquee(state) {
         picksInRound.forEach((pick, index) => {
             if (pick.playerId) {
                 const player = state.players.find(p => p.id === pick.playerId);
-                const safeName = pick.teamName.split(' ')[0].toLowerCase(); // e.g. "Sonic Boom" -> "sonic" (assuming your logos match)
-                // Better safety logic for org names based on your original file
-                const orgMatch = state.orgData.find(o => o.ccs === pick.teamName || o.cpl === pick.teamName || o.cas === pick.teamName || o.cnl === pick.teamName);
-                const safeOrgName = orgMatch ? orgMatch.org.toLowerCase().replace(/\s+/g, '') : safeName;
+                // Look up logo based on the specific Team Name, not the Org Name
+                const safeTeamName = pick.teamName.toLowerCase().replace(/\s+/g, '');
 
                 html += `
                     <div class="recap-item">
                         ${(r-1)*12 + index + 1}. 
-                        <img src="logos/${safeOrgName}.png" class="recap-logo" onerror="this.style.display='none'"> 
+                        <img src="logos/${safeTeamName}.png" class="recap-logo" onerror="this.style.display='none'"> 
                         ${pick.teamName}
                         <span class="recap-player">${player.name}</span>
                     </div>
