@@ -201,7 +201,7 @@
             "Stars": { p: "#8e44ad", pt: "#ffffff", s: "#ffffff", st: "#000000" },
             "Howlers": { p: "#e84393", pt: "#ffffff", s: "#7f8c8d", st: "#ffffff" },
             "Moose": { p: "#d2b48c", pt: "#000000", s: "#228b22", st: "#ffffff" },
-            "Atlantis Anglers": { p: "#008080", pt: "#ffffff", s: "#7f8c8d", st: "#ffffff" },
+            "Anglers": { p: "#008080", pt: "#ffffff", s: "#7f8c8d", st: "#ffffff" },
             "Ninjas": { p: "#1e272e", pt: "#ffffff", s: "#f1c40f", st: "#000000" },
             "Samurai": { p: "#c0392b", pt: "#ffffff", s: "#1e272e", st: "#ffffff" },
             "Flyers": { p: "#27ae60", pt: "#ffffff", s: "#1e272e", st: "#ffffff" },
@@ -210,10 +210,7 @@
         };
 
         function applyTheme(user) {
-            let themeKey = user;
-            if (user.toLowerCase() === "anglers") themeKey = "Atlantis Anglers";
-            
-            const t = themes[themeKey] || { p: "#2c3e50", pt: "#ffffff", s: "#3498db", st: "#ffffff" };
+            const t = themes[user] || { p: "#2c3e50", pt: "#ffffff", s: "#3498db", st: "#ffffff" };
             
             document.documentElement.style.setProperty('--primary', t.p);
             document.documentElement.style.setProperty('--primary-text', t.pt);
@@ -318,10 +315,7 @@
                 renderAdminUI();
                 renderDraftBoard();
             } else {
-                const orgMatch = serverState.orgData.find(o => 
-                    o.org.toLowerCase() === user.toLowerCase() || 
-                    (user.toLowerCase() === 'anglers' && o.org === 'Atlantis Anglers')
-                );
+                const orgMatch = serverState.orgData.find(o => o.org.toLowerCase() === user.toLowerCase());
                 
                 if (orgMatch && orgMatch.passcode === pass) {
                     currentUser = orgMatch.org;

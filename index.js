@@ -24,7 +24,7 @@ const orgData = [
     { org: "Ninjas", passcode: "2876", ccs: "Ninjas", cpl: "Shadows", cas: "Prowlers", cnl: "Thieves" },
     { org: "Samurai", passcode: "6148", ccs: "Samurai", cpl: "Warriors", cas: "Shaman", cnl: "Bushido" },
     { org: "Flyers", passcode: "8532", ccs: "Flyers", cpl: "Lory", cas: "Skyhawks", cnl: "Redwings" },
-    { org: "Atlantis Anglers", passcode: "1409", ccs: "Atlantis Anglers", cpl: "Fishermen", cas: "Behemoths", cnl: "Leviathans" },
+    { org: "Anglers", passcode: "1409", ccs: "Anglers", cpl: "Fishermen", cas: "Behemoths", cnl: "Leviathans" },
     { org: "Vipers", passcode: "3762", ccs: "Vipers", cpl: "Cobras", cas: "Copperheads", cnl: "Anacondas" },
     { org: "Zebras", passcode: "9521", ccs: "Zebras", cpl: "Buffalo", cas: "Elephants", cnl: "Rhinos" }
 ];
@@ -46,12 +46,12 @@ rawPlayers.forEach((p, i) => players.push({ id: i + 1, name: p[0], mmr: p[1], dr
 
 // --- KEEPER DATA INITIALIZATION ---
 const keeperData = [
-    { org: "Atlantis Anglers", league: "CCS", round: 1, playerName: "Nautikl" },
-    { org: "Atlantis Anglers", league: "CCS", round: 2, playerName: "wrld" },
-    { org: "Atlantis Anglers", league: "CCS", round: 3, playerName: "Grizz" },
-    { org: "Atlantis Anglers", league: "CPL", round: 2, playerName: "Thermal" },
-    { org: "Atlantis Anglers", league: "CAS", round: 3, playerName: "CyanLG" },
-    { org: "Atlantis Anglers", league: "CNL", round: 5, playerName: "Burner" },
+    { org: "Anglers", league: "CCS", round: 1, playerName: "Nautikl" },
+    { org: "Anglers", league: "CCS", round: 2, playerName: "wrld" },
+    { org: "Anglers", league: "CCS", round: 3, playerName: "Grizz" },
+    { org: "Anglers", league: "CPL", round: 2, playerName: "Thermal" },
+    { org: "Anglers", league: "CAS", round: 3, playerName: "CyanLG" },
+    { org: "Anglers", league: "CNL", round: 5, playerName: "Burner" },
     { org: "Blasters", league: "CCS", round: 1, playerName: "Blezzy" },
     { org: "Blasters", league: "CPL", round: 2, playerName: "Decaf" },
     { org: "Blasters", league: "CAS", round: 2, playerName: "Chrome Moisty" },
@@ -122,7 +122,7 @@ let activeDraft = {
 };
 
 let draftTimerInterval = null;
-const PICK_TIME_LIMIT = 90; // Updated to 1 min 30 sec
+const PICK_TIME_LIMIT = 90;
 
 function broadcastState() {
     io.emit('stateUpdate', { players, teams, activeDraft, leagueConfig, orgData });
