@@ -182,7 +182,8 @@
   .marquee-text {
     display: inline-block;
     padding-left: 0; 
-    animation: marquee-sequence 40s linear infinite;
+    /* Fallback duration, will be overwritten by Javascript */
+    animation: marquee-sequence 120s linear infinite;
     animation-play-state: paused;
     height: 30px;
     line-height: 30px;
@@ -522,6 +523,7 @@ function updateMiddleTicker(state) {
 function updateMarquee(state) {
     const draft = state.activeDraft;
     const container = document.getElementById('marqueeContent');
+    const marqueeText = document.getElementById('draftRecap');
     
     let html = `<span class="recap-main-label">DRAFT RECAP</span>`;
     
@@ -536,13 +538,15 @@ function updateMarquee(state) {
         picksInRound.forEach((pick, index) => {
             if (pick.playerId) {
                 const player = state.players.find(p => p.id === pick.playerId);
-                // Look up logo based on the specific Team Name, not the Org Name
+                
                 const safeTeamName = pick.teamName.toLowerCase().replace(/\s+/g, '');
+                const orgMatch = state.orgData.find(o => o.ccs === pick.teamName || o.cpl === pick.teamName || o.cas === pick.teamName || o.cnl === pick.teamName);
+                const safeOrgName = orgMatch ? orgMatch.org.toLowerCase().replace(/\s+/g, '') : safeTeamName;
 
                 html += `
                     <div class="recap-item">
                         ${(r-1)*12 + index + 1}. 
-                        <img src="logos/${safeTeamName}.png" class="recap-logo" onerror="this.style.display='none'"> 
+                        <img src="/logos/${safeTeamName}.png" class="recap-logo" onerror="this.onerror=null; this.src='/logos/${safeOrgName}.png';"> 
                         ${pick.teamName}
                         <span class="recap-player">${player.name}</span>
                     </div>
@@ -552,8 +556,13 @@ function updateMarquee(state) {
     }
     
     // Smooth DOM replacement to keep animation flowing
-    const marquee = document.getElementById('draftRecap');
     container.innerHTML = html;
+
+    // --- CONSTANT SPEED CALCULATION ---
+    // Sets speed to ~85 pixels per second for comfortable reading
+    const duration = marqueeText.scrollWidth / 85; 
+    // Enforce a minimum 20s rotation so it isn't too fast when empty
+    marqueeText.style.animationDuration = `${Math.max(duration, 20)}s`;
 }
 
 // Ticker Animation Loop for Middle Rows
