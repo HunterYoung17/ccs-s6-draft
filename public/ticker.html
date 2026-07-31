@@ -475,7 +475,7 @@ function updateLeagueBox(leagueKey) {
     const textEl = document.getElementById('leagueText');
     
     if (leagueLogos[leagueKey]) {
-        logoEl.src = "logos/" + leagueLogos[leagueKey]; 
+        logoEl.src = leagueLogos[leagueKey]; 
         logoEl.style.display = "block";
     }
     textEl.innerText = leagueNames[leagueKey] || leagueKey;
