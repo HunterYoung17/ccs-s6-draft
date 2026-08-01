@@ -543,7 +543,7 @@
                             
                             if (!check.eligible) {
                                 action = `<button class="btn-danger" disabled title="${check.reason}">Cap Exceeded</button>`;
-                            } else if (draft.timeLeft > 60) {
+                            } else if (draft.timeLeft > 70) {
                                 // BROADCAST DELAY: Locks the button for the first 30 seconds (90 - 60 = 30)
                                 const waitTime = draft.timeLeft - 70;
                                 action = `<button class="btn-warning btn-disabled" disabled style="cursor:not-allowed;">Wait ${waitTime}s</button>`;
