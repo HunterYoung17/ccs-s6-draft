@@ -543,6 +543,10 @@
                             
                             if (!check.eligible) {
                                 action = `<button class="btn-danger" disabled title="${check.reason}">Cap Exceeded</button>`;
+                            } else if (draft.timeLeft > 60) {
+                                // BROADCAST DELAY: Locks the button for the first 30 seconds (90 - 60 = 30)
+                                const waitTime = draft.timeLeft - 70;
+                                action = `<button class="btn-warning btn-disabled" disabled style="cursor:not-allowed;">Wait ${waitTime}s</button>`;
                             } else {
                                 action = `<button class="btn-success" onclick="submitPendingPick(${p.id}, ${teamId})">Draft</button>`;
                             }
@@ -592,6 +596,9 @@
                 html += `<h3>Round ${r}</h3>`;
                 
                 const picksInRound = draft.draftBoard.filter(p => p.round === r);
+                // Ensure picks display in proper sequential order for custom rounds
+                picksInRound.sort((a,b) => a.pickIndex - b.pickIndex);
+                
                 html += `<ol class="pick-list">`;
                 
                 picksInRound.forEach(pick => {
