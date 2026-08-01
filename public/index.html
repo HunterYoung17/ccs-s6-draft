@@ -599,7 +599,7 @@
                     if (pick.playerId) {
                         const player = serverState.players.find(p => p.id === pick.playerId);
                         playerText = `<strong style="color:var(--success)">${player.name} (${player.mmr})</strong>`;
-                    } else if (draft.isActive && r === draft.currentRound && pick.teamId === draft.teamsInLeague[draft.currentPickIndex].id) {
+                    } else if (draft.isActive && r === draft.currentRound && pick.pickIndex === draft.currentPickIndex) {
                         playerText = `<span style="color:var(--danger); font-weight:bold;"><em>On Clock</em></span>`;
                     }
                     

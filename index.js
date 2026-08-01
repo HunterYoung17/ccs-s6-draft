@@ -14,6 +14,31 @@ const leagueConfig = {
     "CNL": { rounds: 5, cap: 4275, minMmr: 0, maxMmr: 1479 }
 };
 
+const customDraftOrders = {
+    "CCS": {
+        1: ["Shockwave", "Zebras", "Stars", "Samurai", "Blasters", "Moose", "Pirates", "Flyers", "Howlers", "Anglers", "Ninjas", "Vipers"],
+        2: ["Stars", "Ninjas", "Anglers", "Howlers", "Flyers", "Pirates", "Moose", "Blasters", "Samurai", "Stars", "Zebras", "Shockwave"],
+        3: ["Shockwave", "Zebras", "Vipers", "Samurai", "Blasters", "Moose", "Pirates", "Flyers", "Howlers", "Anglers", "Ninjas", "Vipers"]
+    },
+    "CPL": {
+        1: ["Cobras", "Warriors", "Groundhogs", "Sonic Boom", "Fishermen", "Mortars", "Cobras", "Buffalo", "Marauders", "Coyotes", "Shadows", "Lory"],
+        2: ["Lory", "Shadows", "Coyotes", "Marauders", "Buffalo", "Supernova", "Mortars", "Fishermen", "Sonic Boom", "Groundhogs", "Warriors", "Supernova"],
+        3: ["Cobras", "Warriors", "Groundhogs", "Sonic Boom", "Fishermen", "Mortars", "Supernova", "Buffalo", "Marauders", "Coyotes", "Shadows", "Lory"]
+    },
+    "CAS": {
+        1: ["Conquerors", "Copperheads", "Surge", "Skyhawks", "Elephants", "Shaman", "Wolfpack", "Cannons", "Prowlers", "Black Bears", "Astronauts", "Behemoths"],
+        2: ["Behemoths", "Astronauts", "Black Bears", "Prowlers", "Cannons", "Wolfpack", "Shaman", "Elephants", "Skyhawks", "Surge", "Copperheads", "Conquerors"],
+        3: ["Conquerors", "Copperheads", "Surge", "Skyhawks", "Elephants", "Shaman", "Wolfpack", "Cannons", "Prowlers", "Black Bears", "Astronauts", "Behemoths"]
+    },
+    "CNL": {
+        1: ["Ballistics", "Ducks", "Leviathans", "Shipwreck", "Anacondas", "Rhinos", "Timberwolves", "Bushido", "Redwings", "Sound", "Thieves", "Rovers"],
+        2: ["Rovers", "Thieves", "Sound", "Redwings", "Bushido", "Timberwolves", "Rhinos", "Anacondas", "Shipwreck", "Leviathans", "Ducks", "Ballistics"],
+        3: ["Ballistics", "Ducks", "Leviathans", "Shipwreck", "Anacondas", "Rhinos", "Timberwolves", "Bushido", "Redwings", "Sound", "Thieves", "Rovers"],
+        4: ["Shipwreck", "Thieves", "Sound", "Redwings", "Bushido", "Timberwolves", "Rhinos", "Anacondas", "Rovers", "Leviathans", "Ducks", "Ballistics"],
+        5: ["Ballistics", "Ducks", "Leviathans", "Shipwreck", "Anacondas", "Rhinos", "Timberwolves", "Bushido", "Redwings", "Sound", "Thieves", "Rovers"]
+    }
+};
+
 const orgData = [
     { org: "Shockwave", passcode: "3105", ccs: "Shockwave", cpl: "Sonic Boom", cas: "Surge", cnl: "Sound" },
     { org: "Blasters", passcode: "7241", ccs: "Blasters", cpl: "Mortars", cas: "Cannons", cnl: "Ballistics" },
@@ -140,9 +165,9 @@ function startTurn() {
             return;
         }
         
-        const currentTeam = activeDraft.teamsInLeague[activeDraft.currentPickIndex];
+        // Find pick by pickIndex rather than teamId to natively support trades
         const currentBoardPick = activeDraft.draftBoard.find(p => 
-            p.round === activeDraft.currentRound && p.teamId === currentTeam.id
+            p.round === activeDraft.currentRound && p.pickIndex === activeDraft.currentPickIndex
         );
         
         if (currentBoardPick && currentBoardPick.playerId !== null) {
@@ -150,7 +175,11 @@ function startTurn() {
             if (activeDraft.currentPickIndex >= activeDraft.teamsInLeague.length) {
                 activeDraft.currentPickIndex = 0;
                 activeDraft.currentRound++;
-                activeDraft.teamsInLeague.reverse(); 
+                
+                if (activeDraft.currentRound <= activeDraft.maxRounds) {
+                    const nextRoundNames = customDraftOrders[activeDraft.league][activeDraft.currentRound];
+                    activeDraft.teamsInLeague = nextRoundNames.map(name => teams.find(t => t.league === activeDraft.league && t.name === name));
+                }
             }
         } else {
             keeperFound = false;
@@ -174,24 +203,37 @@ io.on('connection', (socket) => {
     socket.emit('stateUpdate', { players, teams, activeDraft, leagueConfig, orgData });
 
     socket.on('startDraft', (league) => {
-        const leagueTeams = teams.filter(t => t.league === league);
-        
         let board = [];
-        let roundTeams = [...leagueTeams]; 
+        
         for (let r = 1; r <= leagueConfig[league].rounds; r++) {
-            roundTeams.forEach((t) => {
-                const keeper = t.roster.find(p => p.round === r);
-                board.push({ round: r, teamId: t.id, teamName: t.name, playerId: keeper ? keeper.id : null });
+            const roundTeamNames = customDraftOrders[league][r];
+            let assignedKeepers = {}; 
+            
+            roundTeamNames.forEach((teamName, index) => {
+                const t = teams.find(team => team.league === league && team.name === teamName);
+                if (t) {
+                    const roundKeepers = t.roster.filter(p => p.round === r);
+                    const assigned = assignedKeepers[t.id] || 0;
+                    let keeperId = null;
+                    
+                    if (assigned < roundKeepers.length) {
+                        keeperId = roundKeepers[assigned].id;
+                        assignedKeepers[t.id] = assigned + 1;
+                    }
+                    board.push({ round: r, pickIndex: index, teamId: t.id, teamName: t.name, playerId: keeperId });
+                }
             });
-            roundTeams.reverse(); 
         }
+
+        const r1Names = customDraftOrders[league][1];
+        let r1Teams = r1Names.map(name => teams.find(t => t.league === league && t.name === name));
 
         activeDraft = { 
             isActive: true, 
             league: league, 
             currentRound: 1, 
             maxRounds: leagueConfig[league].rounds, 
-            teamsInLeague: [...leagueTeams], 
+            teamsInLeague: r1Teams, 
             currentPickIndex: 0, 
             pendingPick: null, 
             timeLeft: PICK_TIME_LIMIT,
@@ -223,7 +265,7 @@ io.on('connection', (socket) => {
         player.draftedBy = team.id;
         globalTeam.roster.push({ id: playerId, round: activeDraft.currentRound });
 
-        const currentBoardPick = activeDraft.draftBoard.find(p => p.round === activeDraft.currentRound && p.teamId === team.id && p.playerId === null);
+        const currentBoardPick = activeDraft.draftBoard.find(p => p.round === activeDraft.currentRound && p.pickIndex === activeDraft.currentPickIndex);
         if (currentBoardPick) {
             currentBoardPick.playerId = playerId;
         }
@@ -240,7 +282,9 @@ io.on('connection', (socket) => {
                 broadcastState();
                 return;
             }
-            activeDraft.teamsInLeague.reverse();
+            
+            const nextRoundNames = customDraftOrders[activeDraft.league][activeDraft.currentRound];
+            activeDraft.teamsInLeague = nextRoundNames.map(name => teams.find(t => t.league === activeDraft.league && t.name === name));
         }
         startTurn();
     });
@@ -258,7 +302,7 @@ io.on('connection', (socket) => {
             globalTeam.roster = globalTeam.roster.filter(p => p.id !== lastPick.playerId);
         }
 
-        const boardPick = activeDraft.draftBoard.find(p => p.round === lastPick.round && p.teamId === lastPick.teamId);
+        const boardPick = activeDraft.draftBoard.find(p => p.round === lastPick.round && p.pickIndex === lastPick.pickIndex);
         if (boardPick) boardPick.playerId = null;
 
         activeDraft.currentRound = lastPick.round;
